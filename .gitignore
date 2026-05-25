@@ -1,0 +1,10 @@
+node_modules/
+.vercel/
+.env
+.env.*
+!.env.example
+api-key.txt
+*.log
+.superpowers/
+docs/superpowers/
+广告视频生成 API 接口文档.pdf

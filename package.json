@@ -1,0 +1,15 @@
+{
+  "name": "ads-video-maker",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node ad-video-controller.js",
+    "test": "node --test ad-video-controller.test.js"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "undici": "7.25.0"
+  }
+}

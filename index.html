@@ -49,10 +49,11 @@
         <h2>视频信息</h2>
         <div class="columns">
           <div class="field"><label for="brand">品牌名称</label><input id="brand"></div>
-          <div class="field"><label for="ctaText">按钮文案</label><input id="ctaText"></div>
+          <div class="field"><label for="ctaText">CTA 行动文案</label><input id="ctaText"></div>
         </div>
         <div class="field"><label for="title">视频标题</label><input id="title"></div>
         <div class="field"><label for="image">主参考图网址</label><input id="image"></div>
+        <div class="field"><label for="ctaBackgroundImage">CTA 末帧背景图网址（可选）</label><input id="ctaBackgroundImage" placeholder="https://... 或 asset://..."></div>
         <div class="field"><label for="sellingPoints">卖点文案（一行一条）</label><textarea id="sellingPoints"></textarea></div>
         <div class="columns">
           <div class="field"><label for="mode">视频模式</label><select id="mode"><option value="pro">精品 pro</option><option value="fast">快速 fast</option></select></div>
@@ -76,7 +77,7 @@
     </div>
   </div>
   <script>
-    const fields = ["brand", "title", "ctaText", "mode", "execMode", "ratio", "resolution", "duration"];
+    const fields = ["brand", "title", "ctaText", "ctaBackgroundImage", "mode", "execMode", "ratio", "resolution", "duration"];
     const status = document.getElementById("status");
     const result = document.getElementById("result");
     const submit = document.getElementById("submit");
@@ -104,7 +105,7 @@
       document.getElementById("preview").src = values.mainReferenceImage;
     }
     function buildPayload() {
-      return {
+      const payload = {
         brand: document.getElementById("brand").value.trim(),
         title: document.getElementById("title").value.trim(),
         mainReferenceImage: document.getElementById("image").value.trim(),
@@ -116,6 +117,9 @@
         resolution: document.getElementById("resolution").value,
         duration: Number(document.getElementById("duration").value),
       };
+      const ctaBackgroundImage = document.getElementById("ctaBackgroundImage").value.trim();
+      if (ctaBackgroundImage) payload.ctaBackgroundImage = ctaBackgroundImage;
+      return payload;
     }
     async function pollStatus(taskId) {
       const response = await fetch(`/api/status/${encodeURIComponent(taskId)}`);
@@ -163,3 +167,6 @@
   </script>
 </body>
 </html>
+
+
+

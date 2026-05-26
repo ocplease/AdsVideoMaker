@@ -17,6 +17,7 @@ function buildDefaultRequest() {
     mainReferenceImage:
       "https://sns-webpic-qc.xhscdn.com/202605251613/aca5aa4e83849366a6b4249547e7a425/1040g2sg31jbvbd6n2ifg5phi0p60u49lg7r2dj0!nd_dft_wlteh_webp_3",
     ctaText: "立即体验",
+    ctaBackgroundImage: "",
     sellingPoints: [
       "精选内容，随时开听",
       "让碎片时间，更有收获",
@@ -229,3 +230,4 @@ module.exports = {
   responseStatusForClient,
   startServer,
 };
+

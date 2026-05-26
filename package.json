@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "start": "node ad-video-controller.js",
-    "test": "node --test ad-video-controller.test.js"
+    "test": "node --test *.test.js"
   },
   "engines": {
     "node": ">=22.0.0"

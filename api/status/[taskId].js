@@ -1,5 +1,6 @@
 const {
   getAdVideoStatus,
+  extractRequestToken,
   parseUpstreamResponse,
   responseStatusForClient,
 } = require("../../ad-video-controller");
@@ -10,7 +11,7 @@ module.exports = async function handler(request, response) {
     return;
   }
   try {
-    const upstream = await getAdVideoStatus(request.query.taskId);
+    const upstream = await getAdVideoStatus(request.query.taskId, extractRequestToken(request.headers));
     response
       .status(responseStatusForClient(upstream))
       .json(parseUpstreamResponse(upstream.status, upstream.text, upstream.headers));

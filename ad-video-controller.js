@@ -46,14 +46,22 @@ function parseApiConfig(content) {
 }
 
 function loadApiConfig(environment = process.env) {
-  if (environment.AD_VIDEO_BASE_URL && environment.AD_VIDEO_TOKEN) {
+  if (environment.AD_VIDEO_BASE_URL) {
     return {
       baseUrl: environment.AD_VIDEO_BASE_URL.replace(/\/$/, ""),
-      token: environment.AD_VIDEO_TOKEN,
       clientId: environment.AD_VIDEO_CLIENT_ID || "",
     };
   }
-  return parseApiConfig(fs.readFileSync(CONFIG_PATH, "utf8"));
+  const localConfig = parseApiConfig(fs.readFileSync(CONFIG_PATH, "utf8"));
+  return { baseUrl: localConfig.baseUrl, clientId: localConfig.clientId };
+}
+
+function extractRequestToken(headers = {}) {
+  const token = headers["x-ad-video-token"] || headers["X-Ad-Video-Token"] || "";
+  if (!token.trim()) {
+    throw new Error("请先填写 API Token");
+  }
+  return token.trim();
 }
 
 function buildAuthHeaders(config) {
@@ -138,26 +146,26 @@ function readJsonBody(request) {
   });
 }
 
-async function createAdVideo(payload) {
+async function createAdVideo(payload, token) {
   const config = loadApiConfig();
   return requestExternal(`${config.baseUrl}/ad-video/create`, {
     method: "POST",
-    headers: buildAuthHeaders(config),
+    headers: buildAuthHeaders({ token }),
     body: JSON.stringify(payload),
   });
 }
 
-async function getAdVideoStatus(taskId) {
+async function getAdVideoStatus(taskId, token) {
   const config = loadApiConfig();
   return requestExternal(
     `${config.baseUrl}/ad-video/status/${encodeURIComponent(taskId)}`,
-    { headers: buildAuthHeaders(config) },
+    { headers: buildAuthHeaders({ token }) },
   );
 }
 
 async function forwardCreate(request, response) {
   const payload = await readJsonBody(request);
-  const apiResponse = await createAdVideo(payload);
+  const apiResponse = await createAdVideo(payload, extractRequestToken(request.headers));
   sendJson(response, responseStatusForClient(apiResponse), parseUpstreamResponse(
     apiResponse.status,
     apiResponse.text,
@@ -166,7 +174,7 @@ async function forwardCreate(request, response) {
 }
 
 async function forwardStatus(taskId, response) {
-  const apiResponse = await getAdVideoStatus(taskId);
+  const apiResponse = await getAdVideoStatus(taskId, extractRequestToken(request.headers));
   sendJson(response, responseStatusForClient(apiResponse), parseUpstreamResponse(
     apiResponse.status,
     apiResponse.text,
@@ -221,6 +229,7 @@ module.exports = {
   buildAuthHeaders,
   buildDefaultRequest,
   createAdVideo,
+  extractRequestToken,
   getAdVideoStatus,
   handleRequest,
   loadApiConfig,
@@ -230,4 +239,3 @@ module.exports = {
   responseStatusForClient,
   startServer,
 };
-

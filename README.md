@@ -9,11 +9,10 @@ Chinese web interface for creating a `HarmonyOS 播客` ad video through the adv
 
 ```env
 AD_VIDEO_BASE_URL=https://your-ad-video-api.example.com
-AD_VIDEO_TOKEN=replace-with-your-bearer-token
 AD_VIDEO_CLIENT_ID=huawei
 ```
 
-Use the service Base URL and Token from your private API credential document. Never commit the actual token.
+Use the service Base URL from your API credential document. Users enter their own `AD_VIDEO_TOKEN` in the webpage when creating a video; do not configure or commit tokens in Vercel.
 
 3. Deploy the project. Vercel serves `index.html` and deploys the endpoints under `api/` as server-side functions:
 
@@ -23,7 +22,7 @@ POST /api/create
 GET  /api/status/:taskId
 ```
 
-The Bearer token is read only by server-side API functions. It is not returned to the browser.
+The page sends the entered token to the same-origin server function only while creating and polling the task. The token is not stored by the app or returned in responses.
 
 ## Local Use
 
@@ -32,11 +31,10 @@ Install dependencies and run:
 ```powershell
 npm install
 $env:AD_VIDEO_BASE_URL = "https://your-ad-video-api.example.com"
-$env:AD_VIDEO_TOKEN = "replace-with-your-bearer-token"
 npm start
 ```
 
-Open `http://127.0.0.1:4173`.
+Open `http://127.0.0.1:4173`, then enter `AD_VIDEO_TOKEN` in the page before submitting.
 
 For local corporate-network testing only, proxy variables can be set in the terminal before `npm start`:
 

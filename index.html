@@ -47,6 +47,7 @@
     <div class="grid">
       <main class="card">
         <h2>视频信息</h2>
+        <div class="field"><label for="apiToken">AD_VIDEO_TOKEN（必填，仅用于本次页面请求）</label><input id="apiToken" type="password" autocomplete="off" placeholder="请输入 Bearer Token"></div>
         <div class="columns">
           <div class="field"><label for="brand">品牌名称</label><input id="brand"></div>
           <div class="field"><label for="ctaText">CTA 行动文案</label><input id="ctaText"></div>
@@ -82,6 +83,7 @@
     const result = document.getElementById("result");
     const submit = document.getElementById("submit");
     let polling = null;
+    let activeToken = "";
 
     function setStatus(message) { status.textContent = message; }
     async function readJsonResponse(response) {
@@ -122,7 +124,7 @@
       return payload;
     }
     async function pollStatus(taskId) {
-      const response = await fetch(`/api/status/${encodeURIComponent(taskId)}`);
+      const response = await fetch(`/api/status/${encodeURIComponent(taskId)}`, { headers: { "X-Ad-Video-Token": activeToken } });
       const data = await readJsonResponse(response);
       if (!response.ok) throw new Error(data.error || "查询失败");
       setStatus(`任务编号：${taskId}\n当前状态：${data.status}\n请等待视频生成完成……`);
@@ -144,9 +146,12 @@
       document.getElementById("preview").src = document.getElementById("image").value.trim();
       setStatus("正在提交视频制作任务……");
       try {
+        const apiToken = document.getElementById("apiToken").value.trim();
+        if (!apiToken) throw new Error("请先填写 AD_VIDEO_TOKEN");
+        activeToken = apiToken;
         const response = await fetch("/api/create", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "X-Ad-Video-Token": apiToken },
           body: JSON.stringify(buildPayload()),
         });
         const data = await readJsonResponse(response);
@@ -167,6 +172,3 @@
   </script>
 </body>
 </html>
-
-
-

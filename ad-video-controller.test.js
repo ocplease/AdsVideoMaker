@@ -58,16 +58,14 @@ test("resolveProxyUrl prioritizes HTTPS proxy configuration for API requests", (
   assert.equal(resolveProxyUrl({ HTTP_PROXY: "http://fallback.proxy:8080" }), "http://fallback.proxy:8080");
 });
 
-test("loadApiConfig uses Vercel environment variables without reading a local credential file", () => {
+test("loadApiConfig uses the Vercel base URL without storing an API token", () => {
   assert.deepEqual(
     loadApiConfig({
       AD_VIDEO_BASE_URL: "https://api.example.invalid/",
-      AD_VIDEO_TOKEN: "deployment-token",
       AD_VIDEO_CLIENT_ID: "huawei",
     }),
     {
       baseUrl: "https://api.example.invalid",
-      token: "deployment-token",
       clientId: "huawei",
     },
   );

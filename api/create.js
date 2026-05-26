@@ -1,5 +1,6 @@
 const {
   createAdVideo,
+  extractRequestToken,
   parseUpstreamResponse,
   responseStatusForClient,
 } = require("../ad-video-controller");
@@ -11,7 +12,7 @@ module.exports = async function handler(request, response) {
   }
   try {
     const payload = typeof request.body === "string" ? JSON.parse(request.body) : request.body;
-    const upstream = await createAdVideo(payload || {});
+    const upstream = await createAdVideo(payload || {}, extractRequestToken(request.headers));
     response
       .status(responseStatusForClient(upstream))
       .json(parseUpstreamResponse(upstream.status, upstream.text, upstream.headers));

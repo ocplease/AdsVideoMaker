@@ -26,6 +26,9 @@
     button { cursor:pointer; border:0; border-radius:12px; padding:13px 21px; font-size:16px; }
     .primary { background:var(--purple); color:#fff; font-weight:700; flex:1; }
     .secondary { background:#ece7f6; color:var(--purple); }
+    .upload-row { display:flex; align-items:center; gap:8px; margin-top:8px; }
+    .upload-row input[type=file] { padding:8px; font-size:13px; }
+    .upload-row button { padding:9px 12px; font-size:13px; white-space:nowrap; background:#ece7f6; color:var(--purple); }
     button:disabled { opacity:.55; cursor:not-allowed; }
     .preview { text-align:center; }
     .phone { width:184px; max-width:100%; margin:0 auto 16px; display:block; }
@@ -53,8 +56,12 @@
           <div class="field"><label for="ctaText">CTA 行动文案</label><input id="ctaText"></div>
         </div>
         <div class="field"><label for="title">视频标题</label><input id="title"></div>
-        <div class="field"><label for="image">主参考图网址</label><input id="image"></div>
-        <div class="field"><label for="ctaBackgroundImage">CTA 末帧背景图网址（可选）</label><input id="ctaBackgroundImage" placeholder="https://... 或 asset://..."></div>
+        <div class="field"><label for="image">主参考图网址</label><input id="image">
+          <div class="upload-row"><input id="mainImageFile" type="file" accept="image/png,image/jpeg,image/webp"><button type="button" onclick="uploadImage('mainImageFile', 'image', true)">上传主参考图</button></div>
+        </div>
+        <div class="field"><label for="ctaBackgroundImage">CTA 末帧背景图网址（可选）</label><input id="ctaBackgroundImage" placeholder="https://... 或 asset://...">
+          <div class="upload-row"><input id="ctaImageFile" type="file" accept="image/png,image/jpeg,image/webp"><button type="button" onclick="uploadImage('ctaImageFile', 'ctaBackgroundImage', false)">上传 CTA 背景图</button></div>
+        </div>
         <div class="field"><label for="sellingPoints">卖点文案（一行一条）</label><textarea id="sellingPoints"></textarea></div>
         <div class="columns">
           <div class="field"><label for="mode">视频模式</label><select id="mode"><option value="pro">精品 pro</option><option value="fast">快速 fast</option></select></div>
@@ -123,7 +130,30 @@
       if (ctaBackgroundImage) payload.ctaBackgroundImage = ctaBackgroundImage;
       return payload;
     }
-    async function pollStatus(taskId) {
+    async function uploadImage(fileInputId, urlInputId, updatePreview) {
+      const file = document.getElementById(fileInputId).files[0];
+      const apiToken = document.getElementById("apiToken").value.trim();
+      if (!apiToken) { setStatus("请先填写 AD_VIDEO_TOKEN，再上传图片。"); return; }
+      if (!file) { setStatus("请先选择需要上传的图片。"); return; }
+      if (![/^image\/png$/, /^image\/jpeg$/, /^image\/webp$/].some((rule) => rule.test(file.type))) {
+        setStatus("仅支持 PNG、JPG 或 WebP 图片。");
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) { setStatus("图片不能超过 5 MB。"); return; }
+      setStatus("正在上传图片……");
+      try {
+        const response = await fetch(`/api/upload?filename=${encodeURIComponent(file.name)}`, {
+          method: "POST",
+          headers: { "Content-Type": file.type, "X-Ad-Video-Token": apiToken },
+          body: file,
+        });
+        const data = await readJsonResponse(response);
+        if (!response.ok) throw new Error(data.error || "图片上传失败");
+        document.getElementById(urlInputId).value = data.url;
+        if (updatePreview) document.getElementById("preview").src = data.url;
+        setStatus("图片上传完成，已自动填入图片网址。");
+      } catch (error) { handleError(error); }
+    }    async function pollStatus(taskId) {
       const response = await fetch(`/api/status/${encodeURIComponent(taskId)}`, { headers: { "X-Ad-Video-Token": activeToken } });
       const data = await readJsonResponse(response);
       if (!response.ok) throw new Error(data.error || "查询失败");

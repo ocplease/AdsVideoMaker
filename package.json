@@ -10,7 +10,7 @@
     "node": ">=22.0.0"
   },
   "dependencies": {
-    "@vercel/blob": "2.4.0",
+    "@vercel/blob": "^2.4.0",
     "undici": "7.25.0"
   }
 }

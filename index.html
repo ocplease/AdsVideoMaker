@@ -35,6 +35,12 @@
     .tip { padding:12px 14px; border-radius:12px; background:#f1ebff; color:#56319e; text-align:left; line-height:1.55; font-size:13px; }
     .status { margin-top:16px; min-height:150px; padding:14px; border-radius:12px; background:#17131f; color:#f0eaff; font-size:13px; white-space:pre-wrap; line-height:1.55; overflow-wrap:anywhere; }
     .result a { color:#633bb5; word-break:break-all; }
+    .saved { margin-top:18px; text-align:left; }
+    .saved h3 { margin:0 0 10px; font-size:15px; }
+    .saved ul { list-style:none; padding:0; margin:0; display:grid; gap:8px; }
+    .saved li { border:1px solid var(--line); border-radius:10px; padding:10px 12px; background:#fff; }
+    .saved a { color:#633bb5; word-break:break-all; font-size:13px; }
+    .saved .empty { color:var(--muted); font-size:13px; margin:0; }
     @media (max-width:820px) { .grid { grid-template-columns:1fr; } header { align-items:flex-start; flex-direction:column; } }
   </style>
 </head>
@@ -57,10 +63,10 @@
         </div>
         <div class="field"><label for="title">视频标题</label><input id="title"></div>
         <div class="field"><label for="image">主参考图网址</label><input id="image">
-          <div class="upload-row"><input id="mainImageFile" type="file" accept="image/png,image/jpeg,image/webp"><button type="button" onclick="uploadImage('mainImageFile', 'image', true)">上传主参考图</button></div>
+          <div class="upload-row"><input id="mainImageFile" type="file" accept="image/png,image/jpeg"><button type="button" onclick="uploadImage('mainImageFile', 'image', true)">上传主参考图</button></div>
         </div>
         <div class="field"><label for="ctaBackgroundImage">CTA 末帧背景图网址（可选）</label><input id="ctaBackgroundImage" placeholder="https://... 或 asset://...">
-          <div class="upload-row"><input id="ctaImageFile" type="file" accept="image/png,image/jpeg,image/webp"><button type="button" onclick="uploadImage('ctaImageFile', 'ctaBackgroundImage', false)">上传 CTA 背景图</button></div>
+          <div class="upload-row"><input id="ctaImageFile" type="file" accept="image/png,image/jpeg"><button type="button" onclick="uploadImage('ctaImageFile', 'ctaBackgroundImage', false)">上传 CTA 背景图</button></div>
         </div>
         <div class="field"><label for="sellingPoints">卖点文案（一行一条）</label><textarea id="sellingPoints"></textarea></div>
         <div class="columns">
@@ -81,6 +87,10 @@
         <div class="tip">默认制作 15 秒中文竖屏视频，结尾显示“立即体验”。生成通常需要 5 至 15 分钟，请保持本页面打开。</div>
         <div id="status" class="status">准备就绪。点击“开始制作视频”。</div>
         <p id="result" class="result"></p>
+        <div class="saved">
+          <h3>已保存视频</h3>
+          <div id="savedVideos"><p class="empty">正在读取...</p></div>
+        </div>
       </aside>
     </div>
   </div>
@@ -89,6 +99,8 @@
     const status = document.getElementById("status");
     const result = document.getElementById("result");
     const submit = document.getElementById("submit");
+    const savedVideos = document.getElementById("savedVideos");
+    const taskStoreKey = "adsVideoMakerTasks";
     let polling = null;
     let activeToken = "";
 
@@ -130,22 +142,69 @@
       if (ctaBackgroundImage) payload.ctaBackgroundImage = ctaBackgroundImage;
       return payload;
     }
+    function readStoredTasks() {
+      try {
+        const tasks = JSON.parse(localStorage.getItem(taskStoreKey) || "[]");
+        return Array.isArray(tasks) ? tasks : [];
+      } catch {
+        return [];
+      }
+    }
+    function writeStoredTasks(tasks) {
+      localStorage.setItem(taskStoreKey, JSON.stringify(tasks.slice(0, 20)));
+    }
+    function rememberTask(taskId) {
+      const tasks = readStoredTasks().filter((task) => task.taskId !== taskId);
+      tasks.unshift({ taskId, status: "pending", createdAt: new Date().toISOString() });
+      writeStoredTasks(tasks);
+    }
+    function updateStoredTask(taskId, updates) {
+      writeStoredTasks(readStoredTasks().map((task) => (
+        task.taskId === taskId ? { ...task, ...updates } : task
+      )));
+    }
+    function pendingTasks() {
+      return readStoredTasks().filter((task) => task.status === "pending");
+    }
+    function renderSavedVideos(videos) {
+      if (!videos.length) {
+        savedVideos.innerHTML = '<p class="empty">暂无已保存视频。</p>';
+        return;
+      }
+      savedVideos.innerHTML = `<ul>${videos.map((video, index) => {
+        const name = video.pathname ? video.pathname.split("/").pop() : `视频 ${index + 1}`;
+        return `<li><a href="${video.url}" target="_blank" rel="noopener">${name}</a></li>`;
+      }).join("")}</ul>`;
+    }
+    async function loadSavedVideos() {
+      try {
+        const response = await fetch("/api/videos");
+        const data = await readJsonResponse(response);
+        if (!response.ok) throw new Error(data.error || "无法读取已保存视频");
+        renderSavedVideos(data.videos || []);
+      } catch {
+        savedVideos.innerHTML = '<p class="empty">暂时无法读取已保存视频。</p>';
+      }
+    }
     async function uploadImage(fileInputId, urlInputId, updatePreview) {
       const file = document.getElementById(fileInputId).files[0];
       const apiToken = document.getElementById("apiToken").value.trim();
       if (!apiToken) { setStatus("请先填写 AD_VIDEO_TOKEN，再上传图片。"); return; }
       if (!file) { setStatus("请先选择需要上传的图片。"); return; }
-      if (![/^image\/png$/, /^image\/jpeg$/, /^image\/webp$/].some((rule) => rule.test(file.type))) {
-        setStatus("仅支持 PNG、JPG 或 WebP 图片。");
+      if (![/^image\/png$/, /^image\/jpeg$/].some((rule) => rule.test(file.type))) {
+        setStatus("仅支持 PNG 或 JPG 图片。");
         return;
       }
-      if (file.size > 5 * 1024 * 1024) { setStatus("图片不能超过 5 MB。"); return; }
+      if (file.size > 20 * 1024 * 1024) { setStatus("图片不能超过 20 MB。"); return; }
       setStatus("正在上传图片……");
       try {
-        const response = await fetch(`/api/upload?filename=${encodeURIComponent(file.name)}`, {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("name", file.name);
+        const response = await fetch("/api/upload", {
           method: "POST",
-          headers: { "Content-Type": file.type, "X-Ad-Video-Token": apiToken },
-          body: file,
+          headers: { "X-Ad-Video-Token": apiToken },
+          body: formData,
         });
         const data = await readJsonResponse(response);
         if (!response.ok) throw new Error(data.error || "图片上传失败");
@@ -153,7 +212,23 @@
         if (updatePreview) document.getElementById("preview").src = data.url;
         setStatus("图片上传完成，已自动填入图片网址。");
       } catch (error) { handleError(error); }
-    }    async function pollStatus(taskId) {
+    }
+    async function resumePendingTasks() {
+      if (polling || !pendingTasks().length) return;
+      const apiToken = document.getElementById("apiToken").value.trim();
+      if (!apiToken) {
+        setStatus(`发现 ${pendingTasks().length} 个未完成任务。填写 AD_VIDEO_TOKEN 后会继续查询。`);
+        return;
+      }
+      activeToken = apiToken;
+      submit.disabled = true;
+      const taskId = pendingTasks()[0].taskId;
+      await pollStatus(taskId);
+      if (pendingTasks().some((task) => task.taskId === taskId)) {
+        polling = setInterval(() => pollStatus(taskId).catch(handleError), 5000);
+      }
+    }
+    async function pollStatus(taskId) {
       const response = await fetch(`/api/status/${encodeURIComponent(taskId)}`, { headers: { "X-Ad-Video-Token": activeToken } });
       const data = await readJsonResponse(response);
       if (!response.ok) throw new Error(data.error || "查询失败");
@@ -162,10 +237,13 @@
         clearInterval(polling);
         submit.disabled = false;
         setStatus(`任务编号：${taskId}\n当前状态：已完成\n请点击下方链接查看或保存视频。`);
+        updateStoredTask(taskId, { status: "succeeded", videoUrl: data.video_url, completedAt: new Date().toISOString() });
         result.innerHTML = `<a href="${data.video_url}" target="_blank" rel="noopener">打开生成的视频</a>`;
+        loadSavedVideos();
       } else if (["failed", "cancelled"].includes(data.status)) {
         clearInterval(polling);
         submit.disabled = false;
+        updateStoredTask(taskId, { status: data.status, completedAt: new Date().toISOString() });
         setStatus(`任务编号：${taskId}\n生成未成功：${data.error || data.status}`);
       }
     }
@@ -186,9 +264,12 @@
         });
         const data = await readJsonResponse(response);
         if (!response.ok) throw new Error(data.error || "任务创建失败");
+        rememberTask(data.ad_task_id);
         setStatus(`任务编号：${data.ad_task_id}\n当前状态：已提交\n正在等待制作……`);
         await pollStatus(data.ad_task_id);
-        polling = setInterval(() => pollStatus(data.ad_task_id).catch(handleError), 5000);
+        if (pendingTasks().some((task) => task.taskId === data.ad_task_id)) {
+          polling = setInterval(() => pollStatus(data.ad_task_id).catch(handleError), 5000);
+        }
       } catch (error) { handleError(error); }
     }
     function handleError(error) {
@@ -197,8 +278,10 @@
       setStatus(`出现错误：${error.message}`);
     }
     document.getElementById("reset").addEventListener("click", () => loadDefaults().then(() => setStatus("已恢复预置内容。")));
+    document.getElementById("apiToken").addEventListener("change", () => resumePendingTasks().catch(handleError));
     submit.addEventListener("click", createVideo);
-    loadDefaults().catch(handleError);
+    loadDefaults().then(() => resumePendingTasks()).catch(handleError);
+    loadSavedVideos();
   </script>
 </body>
 </html>

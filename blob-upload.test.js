@@ -10,20 +10,25 @@ test("page includes upload controls for both API image reference fields", () => 
   assert.match(html, /id="ctaImageFile"/);
   assert.match(html, /\/api\/upload/);
   assert.match(html, /uploadImage/);
+  assert.match(html, /new FormData\(\)/);
+  assert.match(html, /formData\.append\("file", file\)/);
+  assert.match(html, /formData\.append\("name", file\.name\)/);
 });
 
-test("project includes a Vercel Blob upload route and dependency", () => {
+test("project forwards image uploads to the configured image upload API", () => {
   const routePath = path.join(__dirname, "api", "upload.js");
-  const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, "package.json"), "utf8"));
+  const routeSource = fs.readFileSync(routePath, "utf8");
 
   assert.equal(fs.existsSync(routePath), true);
-  assert.equal(typeof packageJson.dependencies["@vercel/blob"], "string");
+  assert.doesNotMatch(routeSource, /@vercel\/blob/);
+  assert.match(routeSource, /uploadImage/);
 });
 
-test("deployment documentation identifies the Vercel Blob store requirement", () => {
+test("deployment documentation identifies the configured image upload API", () => {
   const readme = fs.readFileSync(path.join(__dirname, "README.md"), "utf8");
   const envExample = fs.readFileSync(path.join(__dirname, ".env.example"), "utf8");
 
-  assert.match(readme, /Vercel Blob/);
-  assert.match(envExample, /BLOB_READ_WRITE_TOKEN/);
+  assert.match(readme, /\/images\/upload/);
+  assert.match(readme, /20 MB/);
+  assert.match(envExample, /AD_VIDEO_BASE_URL/);
 });

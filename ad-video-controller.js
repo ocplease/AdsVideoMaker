@@ -2,6 +2,7 @@ const fs = require("node:fs");
 const http = require("node:http");
 const path = require("node:path");
 const { URL } = require("node:url");
+const { list, put } = require("@vercel/blob");
 const { Agent, ProxyAgent, request: undiciRequest } = require("undici");
 
 const ROOT_DIR = __dirname;
@@ -9,6 +10,8 @@ const CONFIG_PATH = path.join(ROOT_DIR, "api-key.txt");
 const PAGE_PATH = path.join(ROOT_DIR, "index.html");
 const HOST = "127.0.0.1";
 const PORT = Number(process.env.AD_VIDEO_PORT || 4173);
+const MAX_IMAGE_UPLOAD_BYTES = 20 * 1024 * 1024;
+const VIDEO_BLOB_PREFIX = "generated-videos/";
 
 function buildDefaultRequest() {
   return {
@@ -71,6 +74,17 @@ function buildAuthHeaders(config) {
   };
 }
 
+function buildUploadHeaders(token, contentType, contentLength) {
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": contentType,
+  };
+  if (contentLength) {
+    headers["Content-Length"] = contentLength;
+  }
+  return headers;
+}
+
 function resolveProxyUrl(environment = process.env) {
   return environment.HTTPS_PROXY || environment.https_proxy || environment.HTTP_PROXY || environment.http_proxy || "";
 }
@@ -89,6 +103,18 @@ async function requestExternal(url, options = {}) {
     status: apiResponse.statusCode,
     text: await apiResponse.body.text(),
     headers: apiResponse.headers,
+  };
+}
+
+async function downloadExternalFile(url) {
+  const apiResponse = await undiciRequest(url, {
+    method: "GET",
+    dispatcher: buildDispatcher(),
+  });
+  return {
+    status: apiResponse.statusCode,
+    body: Buffer.from(await apiResponse.body.arrayBuffer()),
+    contentType: String(apiResponse.headers["content-type"] || "video/mp4").split(";")[0],
   };
 }
 
@@ -115,6 +141,36 @@ function parseUpstreamResponse(status, text, headers = {}) {
 
 function responseStatusForClient(apiResponse) {
   return apiResponse.status >= 300 && apiResponse.status < 400 ? 502 : apiResponse.status;
+}
+
+function sanitizePathPart(value, fallback) {
+  const cleaned = String(value || fallback).replace(/[^a-zA-Z0-9._-]/g, "-").replace(/-+/g, "-");
+  return cleaned.replace(/^-|-$/g, "") || fallback;
+}
+
+function extensionFromUrl(videoUrl) {
+  try {
+    const extension = path.extname(new URL(videoUrl).pathname).toLowerCase();
+    if ([".mp4", ".mov", ".webm", ".m4v"].includes(extension)) {
+      return extension;
+    }
+  } catch {
+    return ".mp4";
+  }
+  return ".mp4";
+}
+
+function buildStoredVideoPath(taskId, videoUrl) {
+  return `${VIDEO_BLOB_PREFIX}${sanitizePathPart(taskId, "video")}${extensionFromUrl(videoUrl)}`;
+}
+
+function normalizeSavedVideo({ taskId, sourceUrl, blob }) {
+  return {
+    task_id: taskId,
+    source_url: sourceUrl,
+    saved_video_url: blob.url,
+    blob_pathname: blob.pathname,
+  };
 }
 
 function sendJson(response, status, data) {
@@ -146,6 +202,26 @@ function readJsonBody(request) {
   });
 }
 
+function readLimitedBody(request, maxBytes = MAX_IMAGE_UPLOAD_BYTES) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let size = 0;
+    request.on("data", (chunk) => {
+      size += chunk.length;
+      if (size > maxBytes) {
+        const error = new Error(`图片不能超过 ${Math.floor(maxBytes / 1024 / 1024)} MB`);
+        error.statusCode = 413;
+        reject(error);
+        request.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    request.on("end", () => resolve(Buffer.concat(chunks)));
+    request.on("error", reject);
+  });
+}
+
 async function createAdVideo(payload, token) {
   const config = loadApiConfig();
   return requestExternal(`${config.baseUrl}/ad-video/create`, {
@@ -155,12 +231,78 @@ async function createAdVideo(payload, token) {
   });
 }
 
+async function uploadImage(body, contentType, token, contentLength = "") {
+  if (!String(contentType || "").startsWith("multipart/form-data;")) {
+    const error = new Error("图片上传请求必须使用 multipart/form-data");
+    error.statusCode = 400;
+    throw error;
+  }
+  if (!body || !body.length) {
+    const error = new Error("请选择需要上传的图片");
+    error.statusCode = 400;
+    throw error;
+  }
+  const config = loadApiConfig();
+  return requestExternal(`${config.baseUrl}/images/upload`, {
+    method: "POST",
+    headers: buildUploadHeaders(token, contentType, contentLength),
+    body,
+  });
+}
+
 async function getAdVideoStatus(taskId, token) {
   const config = loadApiConfig();
   return requestExternal(
     `${config.baseUrl}/ad-video/status/${encodeURIComponent(taskId)}`,
     { headers: buildAuthHeaders({ token }) },
   );
+}
+
+async function saveGeneratedVideo(taskId, videoUrl) {
+  const downloaded = await downloadExternalFile(videoUrl);
+  if (downloaded.status < 200 || downloaded.status >= 300) {
+    throw new Error(`下载生成视频失败，HTTP ${downloaded.status}`);
+  }
+  if (!downloaded.body.length) {
+    throw new Error("下载生成视频失败，文件为空");
+  }
+  const blob = await put(buildStoredVideoPath(taskId, videoUrl), downloaded.body, {
+    access: "public",
+    allowOverwrite: true,
+    contentType: downloaded.contentType || "video/mp4",
+  });
+  return normalizeSavedVideo({ taskId, sourceUrl: videoUrl, blob });
+}
+
+async function attachSavedVideo(taskId, data) {
+  if (!data || data.status !== "succeeded" || !data.video_url) {
+    return data;
+  }
+  try {
+    const saved = await saveGeneratedVideo(taskId, data.video_url);
+    return {
+      ...data,
+      original_video_url: data.video_url,
+      video_url: saved.saved_video_url,
+      saved_video_url: saved.saved_video_url,
+      blob_pathname: saved.blob_pathname,
+    };
+  } catch (error) {
+    return {
+      ...data,
+      save_error: error.message || "视频已生成，但保存到 Vercel Blob 失败",
+    };
+  }
+}
+
+async function listSavedVideos() {
+  const result = await list({ prefix: VIDEO_BLOB_PREFIX });
+  return result.blobs.map((blob) => ({
+    url: blob.url,
+    pathname: blob.pathname,
+    uploaded_at: blob.uploadedAt,
+    size: blob.size,
+  }));
 }
 
 async function forwardCreate(request, response) {
@@ -173,13 +315,32 @@ async function forwardCreate(request, response) {
   ));
 }
 
-async function forwardStatus(taskId, response) {
-  const apiResponse = await getAdVideoStatus(taskId, extractRequestToken(request.headers));
+async function forwardUpload(request, response) {
+  const body = await readLimitedBody(request);
+  const apiResponse = await uploadImage(
+    body,
+    request.headers["content-type"] || "",
+    extractRequestToken(request.headers),
+    request.headers["content-length"] || "",
+  );
   sendJson(response, responseStatusForClient(apiResponse), parseUpstreamResponse(
     apiResponse.status,
     apiResponse.text,
     apiResponse.headers,
   ));
+}
+
+async function forwardStatus(taskId, request, response) {
+  const apiResponse = await getAdVideoStatus(taskId, extractRequestToken(request.headers));
+  const parsed = parseUpstreamResponse(apiResponse.status, apiResponse.text, apiResponse.headers);
+  const data = apiResponse.status >= 200 && apiResponse.status < 300
+    ? await attachSavedVideo(taskId, parsed)
+    : parsed;
+  sendJson(response, responseStatusForClient(apiResponse), data);
+}
+
+async function forwardVideos(response) {
+  sendJson(response, 200, { videos: await listSavedVideos() });
 }
 
 function servePage(response) {
@@ -202,14 +363,22 @@ async function handleRequest(request, response) {
       await forwardCreate(request, response);
       return;
     }
+    if (request.method === "POST" && url.pathname === "/api/upload") {
+      await forwardUpload(request, response);
+      return;
+    }
+    if (request.method === "GET" && url.pathname === "/api/videos") {
+      await forwardVideos(response);
+      return;
+    }
     const statusMatch = url.pathname.match(/^\/api\/status\/([^/]+)$/);
     if (request.method === "GET" && statusMatch) {
-      await forwardStatus(decodeURIComponent(statusMatch[1]), response);
+      await forwardStatus(decodeURIComponent(statusMatch[1]), request, response);
       return;
     }
     sendJson(response, 404, { error: "Not found" });
   } catch (error) {
-    sendJson(response, 502, { error: error.message || "请求接口失败" });
+    sendJson(response, error.statusCode || 502, { error: error.message || "请求接口失败" });
   }
 }
 
@@ -226,16 +395,26 @@ if (require.main === module) {
 }
 
 module.exports = {
+  attachSavedVideo,
   buildAuthHeaders,
+  buildStoredVideoPath,
+  buildUploadHeaders,
   buildDefaultRequest,
   createAdVideo,
   extractRequestToken,
+  forwardVideos,
+  forwardUpload,
   getAdVideoStatus,
   handleRequest,
+  listSavedVideos,
   loadApiConfig,
+  normalizeSavedVideo,
   parseApiConfig,
   parseUpstreamResponse,
+  readLimitedBody,
   resolveProxyUrl,
   responseStatusForClient,
+  saveGeneratedVideo,
   startServer,
+  uploadImage,
 };

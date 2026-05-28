@@ -5,9 +5,11 @@ const {
   buildDefaultRequest,
   parseApiConfig,
   buildAuthHeaders,
+  buildUploadHeaders,
   resolveProxyUrl,
   loadApiConfig,
   parseUpstreamResponse,
+  uploadImage,
 } = require("./ad-video-controller");
 
 test("buildDefaultRequest presets the approved HarmonyOS Podcast ad request", () => {
@@ -77,4 +79,16 @@ test("parseUpstreamResponse turns an empty redirect into a readable error object
     upstreamStatus: 302,
     location: "http://proxy-warning.invalid/",
   });
+});
+
+test("image upload proxy requires multipart form data and forwards bearer auth", async () => {
+  assert.deepEqual(buildUploadHeaders("user-token", "multipart/form-data; boundary=test", "123"), {
+    Authorization: "Bearer user-token",
+    "Content-Type": "multipart/form-data; boundary=test",
+    "Content-Length": "123",
+  });
+  await assert.rejects(
+    () => uploadImage(Buffer.from("image"), "image/png", "user-token"),
+    /multipart\/form-data/,
+  );
 });

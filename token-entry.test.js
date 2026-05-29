@@ -78,6 +78,9 @@ test("mobile layout stacks controls and renders task rows as cards", () => {
   const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
 
   assert.match(html, /@media \(max-width:560px\)/);
+  assert.match(html, /body \{ overflow-x:hidden; \}/);
+  assert.match(html, /\.page \{ width:100%; max-width:none; padding:12px; \}/);
+  assert.match(html, /\.panel \{ width:100%; box-shadow:none; \}/);
   assert.match(html, /\.columns \{ grid-template-columns:1fr; \}/);
   assert.match(html, /\.upload-row, \.actions \{ flex-direction:column; align-items:stretch; \}/);
   assert.match(html, /table, thead, tbody, th, td, tr \{ display:block; \}/);

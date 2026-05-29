@@ -90,12 +90,15 @@
       .summary { grid-template-columns:repeat(2,minmax(0,1fr)); }
     }
     @media (max-width:560px) {
-      .page { padding:14px 10px 30px; }
-      header { gap:12px; padding:8px 0 14px; }
-      .brand { gap:10px; }
-      .brand img { width:104px; }
-      h1 { font-size:22px; }
+      body { overflow-x:hidden; }
+      .page { width:100%; max-width:none; padding:12px; }
+      header { gap:10px; padding:4px 0 12px; }
+      .brand { gap:9px; }
+      .brand img { width:88px; }
+      h1 { font-size:21px; }
       .sub { font-size:13px; }
+      .grid, .panel, .token-bar, .status-banner { min-width:0; }
+      .panel { width:100%; box-shadow:none; }
       .panel { padding:14px; }
       .status-banner { padding:10px 12px; font-size:13px; }
       .columns { grid-template-columns:1fr; }

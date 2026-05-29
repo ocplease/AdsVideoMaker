@@ -24,3 +24,32 @@ test("web form requests the token from the user and sends it only as a request h
   assert.match(html, /"X-Ad-Video-Token": apiToken/);
   assert.doesNotMatch(html, /values\.AD_VIDEO_TOKEN|values\.apiToken/);
 });
+
+test("web form visibly indicates when a saved local token has been loaded", () => {
+  const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+
+  assert.match(html, /id="tokenState"/);
+  assert.match(html, /本地 Token 已填入/);
+  assert.match(html, /updateTokenState/);
+});
+
+test("web form shows global typed status messages near the top of the dashboard", () => {
+  const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+
+  assert.match(html, /id="statusBanner"/);
+  assert.match(html, /class="status-banner info"/);
+  assert.match(html, /function setStatus\(message, type = "info"\)/);
+  assert.match(html, /statusBanner\.className = `status-banner \$\{type\}`/);
+  assert.match(html, /setStatus\([^)]*, "success"\)/);
+  assert.match(html, /setStatus\([^)]*, "warning"\)/);
+  assert.match(html, /setStatus\([^)]*, "error"\)/);
+});
+
+test("task table uses balanced column widths with a wider video column", () => {
+  const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+
+  assert.match(html, /<col class="task-col-video">/);
+  assert.match(html, /\.task-col-video \{ width:34%; \}/);
+  assert.match(html, /\.task-col-status \{ width:11%; \}/);
+  assert.match(html, /\.task-col-action \{ width:8%; \}/);
+});

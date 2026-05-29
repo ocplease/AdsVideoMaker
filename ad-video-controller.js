@@ -1,4 +1,5 @@
 const fs = require("node:fs");
+const crypto = require("node:crypto");
 const http = require("node:http");
 const path = require("node:path");
 const { URL } = require("node:url");
@@ -148,6 +149,11 @@ function sanitizePathPart(value, fallback) {
   return cleaned.replace(/^-|-$/g, "") || fallback;
 }
 
+function buildTokenVideoPrefix(token) {
+  const tokenHash = crypto.createHash("sha256").update(String(token || "")).digest("hex").slice(0, 16);
+  return `${VIDEO_BLOB_PREFIX}token-${tokenHash}/`;
+}
+
 function extensionFromUrl(videoUrl) {
   try {
     const extension = path.extname(new URL(videoUrl).pathname).toLowerCase();
@@ -160,11 +166,12 @@ function extensionFromUrl(videoUrl) {
   return ".mp4";
 }
 
-function buildStoredVideoPath(taskId, videoUrl, videoTitle = "") {
+function buildStoredVideoPath(taskId, videoUrl, videoTitle = "", token = "") {
   const taskPart = sanitizePathPart(taskId, "video");
   const titlePart = sanitizePathPart(videoTitle, "");
   const fileTitle = titlePart ? `${titlePart}-${taskPart}` : taskPart;
-  return `${VIDEO_BLOB_PREFIX}${fileTitle}${extensionFromUrl(videoUrl)}`;
+  const prefix = token ? buildTokenVideoPrefix(token) : VIDEO_BLOB_PREFIX;
+  return `${prefix}${fileTitle}${extensionFromUrl(videoUrl)}`;
 }
 
 function normalizeSavedVideo({ taskId, sourceUrl, blob }) {
@@ -261,7 +268,7 @@ async function getAdVideoStatus(taskId, token) {
   );
 }
 
-async function saveGeneratedVideo(taskId, videoUrl, videoTitle = "") {
+async function saveGeneratedVideo(taskId, videoUrl, videoTitle = "", token = "") {
   const downloaded = await downloadExternalFile(videoUrl);
   if (downloaded.status < 200 || downloaded.status >= 300) {
     throw new Error(`下载生成视频失败，HTTP ${downloaded.status}`);
@@ -269,7 +276,7 @@ async function saveGeneratedVideo(taskId, videoUrl, videoTitle = "") {
   if (!downloaded.body.length) {
     throw new Error("下载生成视频失败，文件为空");
   }
-  const blob = await put(buildStoredVideoPath(taskId, videoUrl, videoTitle), downloaded.body, {
+  const blob = await put(buildStoredVideoPath(taskId, videoUrl, videoTitle, token), downloaded.body, {
     access: "public",
     allowOverwrite: true,
     contentType: downloaded.contentType || "video/mp4",
@@ -277,12 +284,12 @@ async function saveGeneratedVideo(taskId, videoUrl, videoTitle = "") {
   return normalizeSavedVideo({ taskId, sourceUrl: videoUrl, blob });
 }
 
-async function attachSavedVideo(taskId, data, videoTitle = "") {
+async function attachSavedVideo(taskId, data, videoTitle = "", token = "") {
   if (!data || data.status !== "succeeded" || !data.video_url) {
     return data;
   }
   try {
-    const saved = await saveGeneratedVideo(taskId, data.video_url, videoTitle);
+    const saved = await saveGeneratedVideo(taskId, data.video_url, videoTitle, token);
     return {
       ...data,
       original_video_url: data.video_url,
@@ -298,8 +305,8 @@ async function attachSavedVideo(taskId, data, videoTitle = "") {
   }
 }
 
-async function listSavedVideos() {
-  const result = await list({ prefix: VIDEO_BLOB_PREFIX });
+async function listSavedVideos(token) {
+  const result = await list({ prefix: buildTokenVideoPrefix(token) });
   return result.blobs.map((blob) => ({
     url: blob.url,
     pathname: blob.pathname,
@@ -334,17 +341,18 @@ async function forwardUpload(request, response) {
 }
 
 async function forwardStatus(taskId, request, response) {
-  const apiResponse = await getAdVideoStatus(taskId, extractRequestToken(request.headers));
+  const token = extractRequestToken(request.headers);
+  const apiResponse = await getAdVideoStatus(taskId, token);
   const parsed = parseUpstreamResponse(apiResponse.status, apiResponse.text, apiResponse.headers);
   const videoTitle = request.headers["x-ad-video-title"] || request.headers["X-Ad-Video-Title"] || "";
   const data = apiResponse.status >= 200 && apiResponse.status < 300
-    ? await attachSavedVideo(taskId, parsed, videoTitle)
+    ? await attachSavedVideo(taskId, parsed, videoTitle, token)
     : parsed;
   sendJson(response, responseStatusForClient(apiResponse), data);
 }
 
-async function forwardVideos(response) {
-  sendJson(response, 200, { videos: await listSavedVideos() });
+async function forwardVideos(request, response) {
+  sendJson(response, 200, { videos: await listSavedVideos(extractRequestToken(request.headers)) });
 }
 
 function servePage(response) {
@@ -372,7 +380,7 @@ async function handleRequest(request, response) {
       return;
     }
     if (request.method === "GET" && url.pathname === "/api/videos") {
-      await forwardVideos(response);
+      await forwardVideos(request, response);
       return;
     }
     const statusMatch = url.pathname.match(/^\/api\/status\/([^/]+)$/);
@@ -402,6 +410,7 @@ module.exports = {
   attachSavedVideo,
   buildAuthHeaders,
   buildStoredVideoPath,
+  buildTokenVideoPrefix,
   buildUploadHeaders,
   buildDefaultRequest,
   createAdVideo,

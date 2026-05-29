@@ -5,6 +5,7 @@ const path = require("node:path");
 
 const {
   buildStoredVideoPath,
+  buildTokenVideoPrefix,
   normalizeSavedVideo,
 } = require("./ad-video-controller");
 
@@ -15,9 +16,14 @@ test("completed videos are stored under stable Vercel Blob paths", () => {
 
 test("completed videos use the submitted video title in saved blob filenames", () => {
   assert.equal(
-    buildStoredVideoPath("task/123", "https://cdn.example.com/out.mp4?x=1", "HarmonyOS 播客 - 通勤途中，听见好内容"),
-    "generated-videos/HarmonyOS-播客-通勤途中-听见好内容-task-123.mp4",
+    buildStoredVideoPath("task/123", "https://cdn.example.com/out.mp4?x=1", "HarmonyOS 播客 - 通勤途中，听见好内容", "user-token"),
+    "generated-videos/token-92458bffc9b190fe/HarmonyOS-播客-通勤途中-听见好内容-task-123.mp4",
   );
+});
+
+test("saved video storage is namespaced by API token", () => {
+  assert.equal(buildTokenVideoPrefix("user-token"), "generated-videos/token-92458bffc9b190fe/");
+  assert.notEqual(buildTokenVideoPrefix("user-token"), buildTokenVideoPrefix("other-token"));
 });
 
 test("saved video metadata uses blob URL when available", () => {
@@ -47,6 +53,15 @@ test("project declares Vercel Blob and exposes saved video endpoints", () => {
   assert.match(html, /localStorage/);
 });
 
+test("saved video listing requires and scopes by the request token", () => {
+  const routeSource = fs.readFileSync(path.join(__dirname, "api", "videos.js"), "utf8");
+  const controller = fs.readFileSync(path.join(__dirname, "ad-video-controller.js"), "utf8");
+
+  assert.match(routeSource, /extractRequestToken/);
+  assert.match(routeSource, /listSavedVideos\(extractRequestToken\(request\.headers\)\)/);
+  assert.match(controller, /list\(\{ prefix: buildTokenVideoPrefix\(token\) \}\)/);
+});
+
 test("page renders a multi-task dashboard with token persistence controls", () => {
   const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
 
@@ -73,5 +88,14 @@ test("status polling forwards the task title for saved video filenames", () => {
 
   assert.match(html, /"X-Ad-Video-Title": taskTitle/);
   assert.match(statusRoute, /x-ad-video-title/);
-  assert.match(statusRoute, /attachSavedVideo\(request\.query\.taskId, parsed, videoTitle\)/);
+  assert.match(statusRoute, /attachSavedVideo\(request\.query\.taskId, parsed, videoTitle, token\)/);
+});
+
+test("browser task queue and saved videos are scoped by entered token", () => {
+  const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+
+  assert.match(html, /function tokenScopeKey/);
+  assert.match(html, /localStorage\.getItem\(tokenScopeKey\(taskStoreKey\)\)/);
+  assert.match(html, /localStorage\.setItem\(tokenScopeKey\(taskStoreKey\)/);
+  assert.match(html, /fetch\("\/api\/videos", \{\s*headers: \{ "X-Ad-Video-Token": apiToken \}/);
 });

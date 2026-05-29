@@ -1,4 +1,7 @@
-const { listSavedVideos } = require("../ad-video-controller");
+const {
+  extractRequestToken,
+  listSavedVideos,
+} = require("../ad-video-controller");
 
 module.exports = async function handler(request, response) {
   if (request.method !== "GET") {
@@ -6,7 +9,7 @@ module.exports = async function handler(request, response) {
     return;
   }
   try {
-    response.status(200).json({ videos: await listSavedVideos() });
+    response.status(200).json({ videos: await listSavedVideos(extractRequestToken(request.headers)) });
   } catch (error) {
     response.status(502).json({ error: error.message || "读取已保存视频失败" });
   }

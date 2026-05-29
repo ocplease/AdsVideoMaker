@@ -24,6 +24,16 @@ test("project forwards image uploads to the configured image upload API", () => 
   assert.match(routeSource, /uploadImage/);
 });
 
+test("upload route disables body parsing so multipart data stays intact", () => {
+  const uploadRoute = require("./api/upload");
+
+  assert.deepEqual(uploadRoute.config, {
+    api: {
+      bodyParser: false,
+    },
+  });
+});
+
 test("deployment documentation identifies the configured image upload API", () => {
   const readme = fs.readFileSync(path.join(__dirname, "README.md"), "utf8");
   const envExample = fs.readFileSync(path.join(__dirname, ".env.example"), "utf8");

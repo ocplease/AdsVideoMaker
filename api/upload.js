@@ -6,7 +6,7 @@ const {
   uploadImage,
 } = require("../ad-video-controller");
 
-module.exports = async function handler(request, response) {
+async function handler(request, response) {
   if (request.method !== "POST") {
     response.status(405).json({ error: "Method not allowed" });
     return;
@@ -25,4 +25,12 @@ module.exports = async function handler(request, response) {
   } catch (error) {
     response.status(error.statusCode || 502).json({ error: error.message || "图片上传失败" });
   }
+}
+
+handler.config = {
+  api: {
+    bodyParser: false,
+  },
 };
+
+module.exports = handler;

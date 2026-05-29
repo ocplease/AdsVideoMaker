@@ -316,13 +316,37 @@ async function listSavedVideos(token) {
 }
 
 async function forwardCreate(request, response) {
+  const requestId = request.headers["x-ad-debug-request-id"] || `create-${Date.now().toString(36)}`;
   const payload = await readJsonBody(request);
+  console.info("[ad-video] create started", {
+    requestId,
+    title: payload && payload.title,
+    imageProvided: Boolean(payload && payload.mainReferenceImage),
+    sellingPointCount: Array.isArray(payload && payload.sellingPoints) ? payload.sellingPoints.length : 0,
+    mode: payload && payload.mode,
+    execMode: payload && payload.execMode,
+  });
   const apiResponse = await createAdVideo(payload, extractRequestToken(request.headers));
-  sendJson(response, responseStatusForClient(apiResponse), parseUpstreamResponse(
+  const parsed = parseUpstreamResponse(
     apiResponse.status,
     apiResponse.text,
     apiResponse.headers,
-  ));
+  );
+  if (apiResponse.status < 200 || apiResponse.status >= 300) {
+    console.error("[ad-video] create failed", {
+      requestId,
+      upstreamStatus: apiResponse.status,
+      error: parsed.error,
+      location: parsed.location,
+    });
+  } else {
+    console.info("[ad-video] create succeeded", {
+      requestId,
+      upstreamStatus: apiResponse.status,
+      taskId: parsed.ad_task_id,
+    });
+  }
+  sendJson(response, responseStatusForClient(apiResponse), { ...parsed, requestId });
 }
 
 async function forwardUpload(request, response) {

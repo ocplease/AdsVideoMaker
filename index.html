@@ -208,6 +208,9 @@
       const date = new Date(value);
       return Number.isNaN(date.getTime()) ? "-" : date.toLocaleString();
     }
+    function buildRequestId(scope) {
+      return `${scope}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    }
     async function readJsonResponse(response) {
       const text = await response.text();
       if (!text) {
@@ -475,19 +478,45 @@
           setStatus("请先填写 AD_VIDEO_TOKEN。", "warning");
           return;
         }
+        const requestId = buildRequestId("create");
         const payload = buildPayload();
+        console.info("[ad-video] create request started", {
+          requestId,
+          title: payload.title,
+          imageProvided: Boolean(payload.mainReferenceImage),
+          sellingPointCount: payload.sellingPoints.length,
+          mode: payload.mode,
+          execMode: payload.execMode,
+        });
         const response = await fetch("/api/create", {
           method: "POST",
-          headers: { "Content-Type": "application/json", "X-Ad-Video-Token": apiToken },
+          headers: { "Content-Type": "application/json", "X-Ad-Video-Token": apiToken, "X-Ad-Debug-Request-Id": requestId },
           body: JSON.stringify(payload),
         });
         const data = await readJsonResponse(response);
-        if (!response.ok) throw new Error(data.error || "任务创建失败");
+        if (!response.ok) {
+          console.error("[ad-video] create request rejected", {
+            requestId,
+            status: response.status,
+            error: data.error || "任务创建失败",
+            upstreamStatus: data.upstreamStatus,
+            location: data.location,
+          });
+          throw new Error(`${data.error || "任务创建失败"}（调试编号：${requestId}）`);
+        }
         rememberTask(data.ad_task_id, payload.title);
+        console.info("[ad-video] create request succeeded", {
+          requestId,
+          taskId: data.ad_task_id,
+        });
         setStatus(`任务 ${data.ad_task_id} 已提交。可以继续创建下一个视频。`, "success");
         await pollOneTask(data.ad_task_id);
         startPollingPendingTasks();
       } catch (error) {
+        console.error("[ad-video] create request failed", {
+          message: error.message,
+          name: error.name,
+        });
         handleError(error);
       } finally {
         submit.disabled = false;

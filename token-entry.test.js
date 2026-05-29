@@ -53,3 +53,16 @@ test("task table uses balanced column widths with a wider video column", () => {
   assert.match(html, /\.task-col-status \{ width:11%; \}/);
   assert.match(html, /\.task-col-action \{ width:8%; \}/);
 });
+
+test("create requests include debug request ids and browser diagnostics", () => {
+  const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+  const routeSource = fs.readFileSync(path.join(__dirname, "api", "create.js"), "utf8");
+  const controller = fs.readFileSync(path.join(__dirname, "ad-video-controller.js"), "utf8");
+
+  assert.match(html, /const requestId = buildRequestId\("create"\)/);
+  assert.match(html, /"X-Ad-Debug-Request-Id": requestId/);
+  assert.match(html, /console\.error\("\[ad-video\] create request failed"/);
+  assert.match(routeSource, /console\.error\("\[ad-video\] create failed"/);
+  assert.match(controller, /console\.error\("\[ad-video\] create failed"/);
+  assert.doesNotMatch(html, /console\.log\(apiToken|console\.error\(apiToken/);
+});

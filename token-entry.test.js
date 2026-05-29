@@ -73,3 +73,14 @@ test("status polling transport errors keep tasks pending for retry", () => {
   assert.match(html, /catch \(error\) \{\s*updateStoredTask\(taskId, \{ status: "pending"/);
   assert.doesNotMatch(html, /catch \(error\) \{\s*updateStoredTask\(taskId, \{ status: "failed"/);
 });
+
+test("mobile layout stacks controls and renders task rows as cards", () => {
+  const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+
+  assert.match(html, /@media \(max-width:560px\)/);
+  assert.match(html, /\.columns \{ grid-template-columns:1fr; \}/);
+  assert.match(html, /\.upload-row, \.actions \{ flex-direction:column; align-items:stretch; \}/);
+  assert.match(html, /table, thead, tbody, th, td, tr \{ display:block; \}/);
+  assert.match(html, /td::before \{ content:attr\(data-label\);/);
+  assert.match(html, /<td data-label="视频">/);
+});

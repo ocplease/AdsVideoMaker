@@ -66,3 +66,10 @@ test("create requests include debug request ids and browser diagnostics", () => 
   assert.match(controller, /console\.error\("\[ad-video\] create failed"/);
   assert.doesNotMatch(html, /console\.log\(apiToken|console\.error\(apiToken/);
 });
+
+test("status polling transport errors keep tasks pending for retry", () => {
+  const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+
+  assert.match(html, /catch \(error\) \{\s*updateStoredTask\(taskId, \{ status: "pending"/);
+  assert.doesNotMatch(html, /catch \(error\) \{\s*updateStoredTask\(taskId, \{ status: "failed"/);
+});

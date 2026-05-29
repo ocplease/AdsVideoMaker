@@ -94,11 +94,11 @@ test("status polling encodes video titles before sending them to the local statu
   assert.match(statusRoute, /attachSavedVideo\(request\.query\.taskId, parsed, videoTitle, token\)/);
 });
 
-test("client-side status polling failures mark the affected task as failed", () => {
+test("client-side status polling failures keep the affected task pending", () => {
   const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
 
-  assert.match(html, /catch \(error\) \{\s*updateStoredTask\(taskId, \{ status: "failed"/);
-  assert.match(html, /error: error\.message \|\| "查询失败"/);
+  assert.match(html, /catch \(error\) \{\s*updateStoredTask\(taskId, \{ status: "pending"/);
+  assert.match(html, /error: error\.message \|\| "查询失败，稍后会自动重试"/);
 });
 
 test("browser task queue and saved videos are scoped by entered token", () => {

@@ -411,8 +411,8 @@
         });
         const data = await readJsonResponse(response);
         if (!response.ok) {
-          updateStoredTask(taskId, { status: "failed", completedAt: new Date().toISOString(), error: data.error || "查询失败" });
-          setStatus(`查询任务 ${taskId} 失败：${data.error || "查询失败"}`, "error");
+          updateStoredTask(taskId, { status: "pending", error: data.error || "查询失败，稍后会自动重试" });
+          setStatus(`查询任务 ${taskId} 暂时失败，稍后会自动重试：${data.error || "查询失败"}`, "warning");
           return;
         }
         if (data.status === "succeeded") {
@@ -423,11 +423,11 @@
           updateStoredTask(taskId, { status: data.status, completedAt: new Date().toISOString(), error: data.error || data.status });
           setStatus(`任务 ${taskId} 未成功：${data.error || data.status}`, "error");
         } else {
-          updateStoredTask(taskId, { status: "pending" });
+          updateStoredTask(taskId, { status: "pending", error: "" });
         }
       } catch (error) {
-        updateStoredTask(taskId, { status: "failed", completedAt: new Date().toISOString(), error: error.message || "查询失败" });
-        setStatus(`查询任务 ${taskId} 失败：${error.message || "查询失败"}`, "error");
+        updateStoredTask(taskId, { status: "pending", error: error.message || "查询失败，稍后会自动重试" });
+        setStatus(`查询任务 ${taskId} 暂时失败，稍后会自动重试：${error.message || "查询失败"}`, "warning");
       }
     }
     async function pollAllPendingTasks() {

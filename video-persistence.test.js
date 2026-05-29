@@ -13,6 +13,13 @@ test("completed videos are stored under stable Vercel Blob paths", () => {
   assert.equal(buildStoredVideoPath("", "https://cdn.example.com/out.mov"), "generated-videos/video.mov");
 });
 
+test("completed videos use the submitted video title in saved blob filenames", () => {
+  assert.equal(
+    buildStoredVideoPath("task/123", "https://cdn.example.com/out.mp4?x=1", "HarmonyOS 播客 - 通勤途中，听见好内容"),
+    "generated-videos/HarmonyOS-播客-通勤途中-听见好内容-task-123.mp4",
+  );
+});
+
 test("saved video metadata uses blob URL when available", () => {
   assert.deepEqual(normalizeSavedVideo({
     taskId: "task-1",
@@ -58,4 +65,13 @@ test("page allows new submissions while earlier tasks are still generating", () 
   assert.doesNotMatch(html, /let activeToken = ""/);
   assert.doesNotMatch(html, /submit\.disabled = false;\s*setStatus\(`任务编号/);
   assert.doesNotMatch(html, /clearInterval\(polling\)/);
+});
+
+test("status polling forwards the task title for saved video filenames", () => {
+  const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+  const statusRoute = fs.readFileSync(path.join(__dirname, "api", "status", "[taskId].js"), "utf8");
+
+  assert.match(html, /"X-Ad-Video-Title": taskTitle/);
+  assert.match(statusRoute, /x-ad-video-title/);
+  assert.match(statusRoute, /attachSavedVideo\(request\.query\.taskId, parsed, videoTitle\)/);
 });

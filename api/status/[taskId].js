@@ -14,8 +14,9 @@ module.exports = async function handler(request, response) {
   try {
     const upstream = await getAdVideoStatus(request.query.taskId, extractRequestToken(request.headers));
     const parsed = parseUpstreamResponse(upstream.status, upstream.text, upstream.headers);
+    const videoTitle = request.headers["x-ad-video-title"] || request.headers["X-Ad-Video-Title"] || "";
     const data = upstream.status >= 200 && upstream.status < 300
-      ? await attachSavedVideo(request.query.taskId, parsed)
+      ? await attachSavedVideo(request.query.taskId, parsed, videoTitle)
       : parsed;
     response
       .status(responseStatusForClient(upstream))

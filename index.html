@@ -353,7 +353,13 @@
     async function pollOneTask(taskId) {
       const apiToken = getApiToken();
       if (!apiToken) return;
-      const response = await fetch(`/api/status/${encodeURIComponent(taskId)}`, { headers: { "X-Ad-Video-Token": apiToken } });
+      const taskTitle = (readStoredTasks().find((task) => task.taskId === taskId) || {}).title || "";
+      const response = await fetch(`/api/status/${encodeURIComponent(taskId)}`, {
+        headers: {
+          "X-Ad-Video-Token": apiToken,
+          "X-Ad-Video-Title": taskTitle,
+        },
+      });
       const data = await readJsonResponse(response);
       if (!response.ok) {
         setStatus(`查询任务 ${taskId} 失败：${data.error || "查询失败"}`);

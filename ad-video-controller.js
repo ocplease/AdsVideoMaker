@@ -144,7 +144,7 @@ function responseStatusForClient(apiResponse) {
 }
 
 function sanitizePathPart(value, fallback) {
-  const cleaned = String(value || fallback).replace(/[^a-zA-Z0-9._-]/g, "-").replace(/-+/g, "-");
+  const cleaned = String(value || fallback).replace(/[^\p{L}\p{N}._-]+/gu, "-").replace(/-+/g, "-");
   return cleaned.replace(/^-|-$/g, "") || fallback;
 }
 
@@ -160,8 +160,11 @@ function extensionFromUrl(videoUrl) {
   return ".mp4";
 }
 
-function buildStoredVideoPath(taskId, videoUrl) {
-  return `${VIDEO_BLOB_PREFIX}${sanitizePathPart(taskId, "video")}${extensionFromUrl(videoUrl)}`;
+function buildStoredVideoPath(taskId, videoUrl, videoTitle = "") {
+  const taskPart = sanitizePathPart(taskId, "video");
+  const titlePart = sanitizePathPart(videoTitle, "");
+  const fileTitle = titlePart ? `${titlePart}-${taskPart}` : taskPart;
+  return `${VIDEO_BLOB_PREFIX}${fileTitle}${extensionFromUrl(videoUrl)}`;
 }
 
 function normalizeSavedVideo({ taskId, sourceUrl, blob }) {
@@ -258,7 +261,7 @@ async function getAdVideoStatus(taskId, token) {
   );
 }
 
-async function saveGeneratedVideo(taskId, videoUrl) {
+async function saveGeneratedVideo(taskId, videoUrl, videoTitle = "") {
   const downloaded = await downloadExternalFile(videoUrl);
   if (downloaded.status < 200 || downloaded.status >= 300) {
     throw new Error(`下载生成视频失败，HTTP ${downloaded.status}`);
@@ -266,7 +269,7 @@ async function saveGeneratedVideo(taskId, videoUrl) {
   if (!downloaded.body.length) {
     throw new Error("下载生成视频失败，文件为空");
   }
-  const blob = await put(buildStoredVideoPath(taskId, videoUrl), downloaded.body, {
+  const blob = await put(buildStoredVideoPath(taskId, videoUrl, videoTitle), downloaded.body, {
     access: "public",
     allowOverwrite: true,
     contentType: downloaded.contentType || "video/mp4",
@@ -274,12 +277,12 @@ async function saveGeneratedVideo(taskId, videoUrl) {
   return normalizeSavedVideo({ taskId, sourceUrl: videoUrl, blob });
 }
 
-async function attachSavedVideo(taskId, data) {
+async function attachSavedVideo(taskId, data, videoTitle = "") {
   if (!data || data.status !== "succeeded" || !data.video_url) {
     return data;
   }
   try {
-    const saved = await saveGeneratedVideo(taskId, data.video_url);
+    const saved = await saveGeneratedVideo(taskId, data.video_url, videoTitle);
     return {
       ...data,
       original_video_url: data.video_url,
@@ -333,8 +336,9 @@ async function forwardUpload(request, response) {
 async function forwardStatus(taskId, request, response) {
   const apiResponse = await getAdVideoStatus(taskId, extractRequestToken(request.headers));
   const parsed = parseUpstreamResponse(apiResponse.status, apiResponse.text, apiResponse.headers);
+  const videoTitle = request.headers["x-ad-video-title"] || request.headers["X-Ad-Video-Title"] || "";
   const data = apiResponse.status >= 200 && apiResponse.status < 300
-    ? await attachSavedVideo(taskId, parsed)
+    ? await attachSavedVideo(taskId, parsed, videoTitle)
     : parsed;
   sendJson(response, responseStatusForClient(apiResponse), data);
 }

@@ -399,26 +399,32 @@
       const apiToken = getApiToken();
       if (!apiToken) return;
       const taskTitle = (readStoredTasks().find((task) => task.taskId === taskId) || {}).title || "";
-      const response = await fetch(`/api/status/${encodeURIComponent(taskId)}`, {
-        headers: {
-          "X-Ad-Video-Token": apiToken,
-          "X-Ad-Video-Title": taskTitle,
-        },
-      });
-      const data = await readJsonResponse(response);
-      if (!response.ok) {
-        setStatus(`查询任务 ${taskId} 失败：${data.error || "查询失败"}`, "error");
-        return;
-      }
-      if (data.status === "succeeded") {
-        updateStoredTask(taskId, { status: "succeeded", videoUrl: data.video_url, completedAt: new Date().toISOString(), error: "" });
-        setStatus(`任务 ${taskId} 已完成，可以继续提交或打开结果。`, "success");
-        loadSavedVideos();
-      } else if (["failed", "cancelled"].includes(data.status)) {
-        updateStoredTask(taskId, { status: data.status, completedAt: new Date().toISOString(), error: data.error || data.status });
-        setStatus(`任务 ${taskId} 未成功：${data.error || data.status}`, "error");
-      } else {
-        updateStoredTask(taskId, { status: "pending" });
+      try {
+        const response = await fetch(`/api/status/${encodeURIComponent(taskId)}`, {
+          headers: {
+            "X-Ad-Video-Token": apiToken,
+            "X-Ad-Video-Title": encodeURIComponent(taskTitle),
+          },
+        });
+        const data = await readJsonResponse(response);
+        if (!response.ok) {
+          updateStoredTask(taskId, { status: "failed", completedAt: new Date().toISOString(), error: data.error || "查询失败" });
+          setStatus(`查询任务 ${taskId} 失败：${data.error || "查询失败"}`, "error");
+          return;
+        }
+        if (data.status === "succeeded") {
+          updateStoredTask(taskId, { status: "succeeded", videoUrl: data.video_url, completedAt: new Date().toISOString(), error: "" });
+          setStatus(`任务 ${taskId} 已完成，可以继续提交或打开结果。`, "success");
+          loadSavedVideos();
+        } else if (["failed", "cancelled"].includes(data.status)) {
+          updateStoredTask(taskId, { status: data.status, completedAt: new Date().toISOString(), error: data.error || data.status });
+          setStatus(`任务 ${taskId} 未成功：${data.error || data.status}`, "error");
+        } else {
+          updateStoredTask(taskId, { status: "pending" });
+        }
+      } catch (error) {
+        updateStoredTask(taskId, { status: "failed", completedAt: new Date().toISOString(), error: error.message || "查询失败" });
+        setStatus(`查询任务 ${taskId} 失败：${error.message || "查询失败"}`, "error");
       }
     }
     async function pollAllPendingTasks() {

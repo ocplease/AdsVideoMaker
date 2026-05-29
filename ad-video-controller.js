@@ -344,7 +344,8 @@ async function forwardStatus(taskId, request, response) {
   const token = extractRequestToken(request.headers);
   const apiResponse = await getAdVideoStatus(taskId, token);
   const parsed = parseUpstreamResponse(apiResponse.status, apiResponse.text, apiResponse.headers);
-  const videoTitle = request.headers["x-ad-video-title"] || request.headers["X-Ad-Video-Title"] || "";
+  const encodedVideoTitle = request.headers["x-ad-video-title"] || request.headers["X-Ad-Video-Title"] || "";
+  const videoTitle = encodedVideoTitle ? decodeURIComponent(encodedVideoTitle) : "";
   const data = apiResponse.status >= 200 && apiResponse.status < 300
     ? await attachSavedVideo(taskId, parsed, videoTitle, token)
     : parsed;

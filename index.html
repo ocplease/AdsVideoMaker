@@ -5,68 +5,111 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>HarmonyOS 播客广告视频制作</title>
   <style>
-    :root { --purple:#633bb5; --bg:#f5f3f8; --card:#fff; --line:#e6e1ef; --text:#17131f; --muted:#655f70; }
+    :root {
+      --purple:#633bb5;
+      --teal:#167c80;
+      --amber:#9b5b00;
+      --bg:#f6f7fb;
+      --panel:#fff;
+      --line:#dfe3ee;
+      --text:#17131f;
+      --muted:#655f70;
+      --danger:#b42318;
+      --success:#147a3d;
+    }
     * { box-sizing:border-box; }
     body { margin:0; font-family:"Microsoft YaHei UI","Microsoft YaHei",Arial,sans-serif; color:var(--text); background:var(--bg); }
-    .page { max-width:1080px; margin:0 auto; padding:28px 18px 56px; }
-    header { display:flex; align-items:center; gap:22px; background:var(--card); border-radius:22px; padding:22px 26px; box-shadow:0 8px 26px rgba(32,18,64,.06); }
-    header img { width:170px; height:auto; object-fit:contain; }
-    h1 { font-size:27px; margin:0 0 8px; }
+    .page { max-width:1240px; margin:0 auto; padding:24px 18px 48px; }
+    header { display:flex; align-items:center; justify-content:space-between; gap:18px; padding:16px 0 20px; }
+    .brand { display:flex; align-items:center; gap:16px; min-width:0; }
+    .brand img { width:132px; height:auto; object-fit:contain; }
+    h1 { font-size:26px; margin:0 0 6px; }
     .sub { color:var(--muted); margin:0; line-height:1.55; }
-    .grid { display:grid; grid-template-columns:1fr 360px; gap:18px; margin-top:18px; }
-    .card { background:var(--card); border-radius:20px; padding:22px; box-shadow:0 5px 20px rgba(32,18,64,.045); }
-    h2 { font-size:19px; margin:0 0 18px; }
-    .field { margin-bottom:15px; }
+    .token-bar { display:flex; align-items:end; gap:8px; min-width:360px; }
+    .token-bar .field { flex:1; margin:0; }
+    .grid { display:grid; grid-template-columns:420px 1fr; gap:16px; align-items:start; }
+    .panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:18px; box-shadow:0 5px 18px rgba(31,35,50,.05); }
+    h2 { font-size:18px; margin:0 0 16px; }
+    h3 { font-size:15px; margin:0 0 10px; }
+    .field { margin-bottom:13px; }
     label { display:block; font-size:13px; color:var(--muted); margin-bottom:7px; }
-    input, textarea, select { width:100%; border:1px solid var(--line); border-radius:10px; padding:11px 12px; font:inherit; color:var(--text); background:#fff; }
-    textarea { min-height:90px; resize:vertical; line-height:1.55; }
-    input:focus, textarea:focus, select:focus { outline:2px solid #d9ccfb; border-color:var(--purple); }
-    .columns { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
-    .actions { display:flex; gap:12px; margin-top:20px; }
-    button { cursor:pointer; border:0; border-radius:12px; padding:13px 21px; font-size:16px; }
+    input, textarea, select { width:100%; border:1px solid var(--line); border-radius:8px; padding:10px 11px; font:inherit; color:var(--text); background:#fff; }
+    textarea { min-height:92px; resize:vertical; line-height:1.55; }
+    input:focus, textarea:focus, select:focus { outline:2px solid #d6ecee; border-color:var(--teal); }
+    .columns { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+    .actions, .upload-row { display:flex; align-items:center; gap:8px; }
+    .actions { margin-top:18px; }
+    button { cursor:pointer; border:0; border-radius:8px; padding:11px 15px; font-size:14px; white-space:nowrap; }
     .primary { background:var(--purple); color:#fff; font-weight:700; flex:1; }
-    .secondary { background:#ece7f6; color:var(--purple); }
-    .upload-row { display:flex; align-items:center; gap:8px; margin-top:8px; }
-    .upload-row input[type=file] { padding:8px; font-size:13px; }
-    .upload-row button { padding:9px 12px; font-size:13px; white-space:nowrap; background:#ece7f6; color:var(--purple); }
+    .secondary { background:#e8edf7; color:#24324f; }
+    .ghost { background:#eef8f8; color:var(--teal); }
+    .danger { background:#fff1ef; color:var(--danger); }
     button:disabled { opacity:.55; cursor:not-allowed; }
-    .preview { text-align:center; }
-    .phone { width:184px; max-width:100%; margin:0 auto 16px; display:block; }
-    .tip { padding:12px 14px; border-radius:12px; background:#f1ebff; color:#56319e; text-align:left; line-height:1.55; font-size:13px; }
-    .status { margin-top:16px; min-height:150px; padding:14px; border-radius:12px; background:#17131f; color:#f0eaff; font-size:13px; white-space:pre-wrap; line-height:1.55; overflow-wrap:anywhere; }
-    .result a { color:#633bb5; word-break:break-all; }
-    .saved { margin-top:18px; text-align:left; }
-    .saved h3 { margin:0 0 10px; font-size:15px; }
+    .upload-row { margin-top:8px; }
+    .upload-row input[type=file] { padding:7px; font-size:13px; }
+    .upload-row button { padding:8px 10px; }
+    .reference { display:grid; grid-template-columns:112px 1fr; gap:12px; align-items:start; }
+    .reference img { width:112px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+    .message { margin-top:14px; padding:12px 14px; border-radius:8px; background:#172033; color:#eef3ff; font-size:13px; line-height:1.55; overflow-wrap:anywhere; }
+    .summary { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin-bottom:14px; }
+    .metric { border:1px solid var(--line); border-radius:8px; padding:12px; background:#fbfcff; }
+    .metric strong { display:block; font-size:22px; margin-bottom:2px; }
+    .metric span { color:var(--muted); font-size:12px; }
+    .table-wrap { overflow:auto; border:1px solid var(--line); border-radius:8px; }
+    table { width:100%; border-collapse:collapse; min-width:760px; background:#fff; }
+    th, td { padding:11px 12px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; font-size:13px; }
+    th { background:#f1f4fa; color:#465166; font-weight:700; }
+    tbody tr:last-child td { border-bottom:0; }
+    .task-title { font-weight:700; max-width:220px; overflow-wrap:anywhere; }
+    .task-id { color:var(--muted); font-family:Consolas,monospace; font-size:12px; overflow-wrap:anywhere; }
+    .badge { display:inline-block; border-radius:999px; padding:3px 8px; font-size:12px; font-weight:700; }
+    .badge.pending { background:#fff7e6; color:var(--amber); }
+    .badge.succeeded { background:#e8f6ee; color:var(--success); }
+    .badge.failed, .badge.cancelled { background:#fff1ef; color:var(--danger); }
+    .task-link { color:var(--teal); word-break:break-all; }
+    .empty-row { color:var(--muted); text-align:center; padding:28px 12px; }
+    .saved { margin-top:16px; }
     .saved ul { list-style:none; padding:0; margin:0; display:grid; gap:8px; }
-    .saved li { border:1px solid var(--line); border-radius:10px; padding:10px 12px; background:#fff; }
-    .saved a { color:#633bb5; word-break:break-all; font-size:13px; }
-    .saved .empty { color:var(--muted); font-size:13px; margin:0; }
-    @media (max-width:820px) { .grid { grid-template-columns:1fr; } header { align-items:flex-start; flex-direction:column; } }
+    .saved li { border:1px solid var(--line); border-radius:8px; padding:9px 11px; background:#fff; }
+    .saved a { color:var(--teal); word-break:break-all; font-size:13px; }
+    .empty { color:var(--muted); font-size:13px; margin:0; }
+    @media (max-width:920px) {
+      header, .brand, .token-bar { align-items:stretch; flex-direction:column; }
+      .token-bar { min-width:0; }
+      .grid { grid-template-columns:1fr; }
+      .summary { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    }
   </style>
 </head>
 <body>
   <div class="page">
     <header>
-      <img src="./huawei-podcast-logo.png" alt="HarmonyOS 播客">
-      <div>
-        <h1>广告视频一键制作</h1>
-        <p class="sub">信息已经预置好。需要调整时修改下面内容，点击“开始制作视频”即可提交并自动查询结果。</p>
+      <div class="brand">
+        <img src="./huawei-podcast-logo.png" alt="HarmonyOS 播客">
+        <div>
+          <h1>广告视频制作仪表盘</h1>
+          <p class="sub">可以连续提交多个视频任务，页面会自动追踪所有未完成任务。</p>
+        </div>
+      </div>
+      <div class="token-bar">
+        <div class="field"><label for="apiToken">AD_VIDEO_TOKEN（保存在本浏览器）</label><input id="apiToken" type="password" autocomplete="off" placeholder="请输入 Bearer Token"></div>
+        <button id="clearToken" class="danger" type="button">清除本地 Token</button>
       </div>
     </header>
+
     <div class="grid">
-      <main class="card">
-        <h2>视频信息</h2>
-        <div class="field"><label for="apiToken">AD_VIDEO_TOKEN（必填，仅用于本次页面请求）</label><input id="apiToken" type="password" autocomplete="off" placeholder="请输入 Bearer Token"></div>
+      <main class="panel">
+        <h2>新建视频</h2>
         <div class="columns">
           <div class="field"><label for="brand">品牌名称</label><input id="brand"></div>
           <div class="field"><label for="ctaText">CTA 行动文案</label><input id="ctaText"></div>
         </div>
         <div class="field"><label for="title">视频标题</label><input id="title"></div>
         <div class="field"><label for="image">主参考图网址</label><input id="image">
-          <div class="upload-row"><input id="mainImageFile" type="file" accept="image/png,image/jpeg"><button type="button" onclick="uploadImage('mainImageFile', 'image', true)">上传主参考图</button></div>
+          <div class="upload-row"><input id="mainImageFile" type="file" accept="image/png,image/jpeg"><button class="ghost" type="button" onclick="uploadImage('mainImageFile', 'image', true)">上传主参考图</button></div>
         </div>
         <div class="field"><label for="ctaBackgroundImage">CTA 末帧背景图网址（可选）</label><input id="ctaBackgroundImage" placeholder="https://... 或 asset://...">
-          <div class="upload-row"><input id="ctaImageFile" type="file" accept="image/png,image/jpeg"><button type="button" onclick="uploadImage('ctaImageFile', 'ctaBackgroundImage', false)">上传 CTA 背景图</button></div>
+          <div class="upload-row"><input id="ctaImageFile" type="file" accept="image/png,image/jpeg"><button class="ghost" type="button" onclick="uploadImage('ctaImageFile', 'ctaBackgroundImage', false)">上传 CTA 背景图</button></div>
         </div>
         <div class="field"><label for="sellingPoints">卖点文案（一行一条）</label><textarea id="sellingPoints"></textarea></div>
         <div class="columns">
@@ -76,35 +119,72 @@
           <div class="field"><label for="resolution">清晰度</label><select id="resolution"><option>1080p</option><option>720p</option><option>480p</option></select></div>
           <div class="field"><label for="duration">时长（秒）</label><input id="duration" type="number" min="1" max="120"></div>
         </div>
+        <div class="reference">
+          <img id="preview" src="./podcast-detail.png" alt="当前参考图">
+          <div class="message" id="status">准备就绪。提交任务后可以继续创建下一个视频。</div>
+        </div>
         <div class="actions">
           <button id="reset" class="secondary" type="button">恢复预置</button>
           <button id="submit" class="primary" type="button">开始制作视频</button>
         </div>
       </main>
-      <aside class="card preview">
-        <h2>当前参考画面</h2>
-        <img id="preview" class="phone" src="./podcast-detail.png" alt="播客界面参考图">
-        <div class="tip">默认制作 15 秒中文竖屏视频，结尾显示“立即体验”。生成通常需要 5 至 15 分钟，请保持本页面打开。</div>
-        <div id="status" class="status">准备就绪。点击“开始制作视频”。</div>
-        <p id="result" class="result"></p>
+
+      <section class="panel">
+        <h2>任务队列</h2>
+        <div class="summary">
+          <div class="metric"><strong id="pendingCount">0</strong><span>生成中</span></div>
+          <div class="metric"><strong id="succeededCount">0</strong><span>已完成</span></div>
+          <div class="metric"><strong id="failedCount">0</strong><span>未成功</span></div>
+          <div class="metric"><strong id="totalCount">0</strong><span>本地记录</span></div>
+        </div>
+        <div class="table-wrap">
+          <table aria-label="视频生成任务队列">
+            <thead>
+              <tr>
+                <th>视频</th>
+                <th>状态</th>
+                <th>创建时间</th>
+                <th>完成时间 / 错误</th>
+                <th>结果</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="taskTableBody"></tbody>
+          </table>
+        </div>
         <div class="saved">
           <h3>已保存视频</h3>
           <div id="savedVideos"><p class="empty">正在读取...</p></div>
         </div>
-      </aside>
+      </section>
     </div>
   </div>
   <script>
     const fields = ["brand", "title", "ctaText", "ctaBackgroundImage", "mode", "execMode", "ratio", "resolution", "duration"];
     const status = document.getElementById("status");
-    const result = document.getElementById("result");
     const submit = document.getElementById("submit");
     const savedVideos = document.getElementById("savedVideos");
+    const taskTableBody = document.getElementById("taskTableBody");
     const taskStoreKey = "adsVideoMakerTasks";
-    let polling = null;
-    let activeToken = "";
+    const tokenStoreKey = "adVideoMakerToken";
+    let pollingTimer = null;
+    let pollingInFlight = false;
 
     function setStatus(message) { status.textContent = message; }
+    function escapeHtml(value) {
+      return String(value || "").replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      }[char]));
+    }
+    function formatDate(value) {
+      if (!value) return "-";
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? "-" : date.toLocaleString();
+    }
     async function readJsonResponse(response) {
       const text = await response.text();
       if (!text) {
@@ -115,6 +195,18 @@
       } catch {
         return { error: `服务器返回 HTTP ${response.status}，但内容格式无法读取。` };
       }
+    }
+    function readStoredToken() {
+      return localStorage.getItem(tokenStoreKey) || "";
+    }
+    function writeStoredToken(token) {
+      if (token) localStorage.setItem(tokenStoreKey, token);
+      else localStorage.removeItem(tokenStoreKey);
+    }
+    function getApiToken() {
+      const apiToken = document.getElementById("apiToken").value.trim();
+      if (apiToken) writeStoredToken(apiToken);
+      return apiToken;
     }
     async function loadDefaults() {
       const response = await fetch("/api/defaults");
@@ -153,18 +245,63 @@
     function writeStoredTasks(tasks) {
       localStorage.setItem(taskStoreKey, JSON.stringify(tasks.slice(0, 20)));
     }
-    function rememberTask(taskId) {
+    function rememberTask(taskId, title) {
       const tasks = readStoredTasks().filter((task) => task.taskId !== taskId);
-      tasks.unshift({ taskId, status: "pending", createdAt: new Date().toISOString() });
+      tasks.unshift({ taskId, title: title || "未命名视频", status: "pending", createdAt: new Date().toISOString() });
       writeStoredTasks(tasks);
+      renderTasks();
     }
     function updateStoredTask(taskId, updates) {
       writeStoredTasks(readStoredTasks().map((task) => (
         task.taskId === taskId ? { ...task, ...updates } : task
       )));
+      renderTasks();
+    }
+    function removeTask(taskId) {
+      writeStoredTasks(readStoredTasks().filter((task) => task.taskId !== taskId));
+      renderTasks();
+      startPollingPendingTasks();
     }
     function pendingTasks() {
       return readStoredTasks().filter((task) => task.status === "pending");
+    }
+    function statusLabel(statusValue) {
+      return {
+        pending: "生成中",
+        succeeded: "已完成",
+        failed: "失败",
+        cancelled: "已取消",
+      }[statusValue] || statusValue || "未知";
+    }
+    function renderTaskRow(task) {
+      const statusValue = escapeHtml(task.status || "pending");
+      const result = task.videoUrl
+        ? `<a class="task-link" href="${escapeHtml(task.videoUrl)}" target="_blank" rel="noopener">打开视频</a>`
+        : "-";
+      const detail = task.error ? escapeHtml(task.error) : formatDate(task.completedAt);
+      return `<tr>
+        <td><div class="task-title">${escapeHtml(task.title)}</div><div class="task-id">${escapeHtml(task.taskId)}</div></td>
+        <td><span class="badge ${statusValue}">${escapeHtml(statusLabel(task.status))}</span></td>
+        <td>${escapeHtml(formatDate(task.createdAt))}</td>
+        <td>${detail}</td>
+        <td>${result}</td>
+        <td><button class="secondary" type="button" data-remove-task="${escapeHtml(task.taskId)}">移除</button></td>
+      </tr>`;
+    }
+    function renderTasks() {
+      const tasks = readStoredTasks();
+      const counts = tasks.reduce((result, task) => {
+        const key = task.status || "pending";
+        result[key] = (result[key] || 0) + 1;
+        return result;
+      }, {});
+      document.getElementById("pendingCount").textContent = counts.pending || 0;
+      document.getElementById("succeededCount").textContent = counts.succeeded || 0;
+      document.getElementById("failedCount").textContent = (counts.failed || 0) + (counts.cancelled || 0);
+      document.getElementById("totalCount").textContent = tasks.length;
+      taskTableBody.innerHTML = tasks.length
+        ? tasks.map(renderTaskRow).join("")
+        : '<tr><td class="empty-row" colspan="6">暂无任务。提交视频后会出现在这里。</td></tr>';
     }
     function renderSavedVideos(videos) {
       if (!videos.length) {
@@ -173,7 +310,7 @@
       }
       savedVideos.innerHTML = `<ul>${videos.map((video, index) => {
         const name = video.pathname ? video.pathname.split("/").pop() : `视频 ${index + 1}`;
-        return `<li><a href="${video.url}" target="_blank" rel="noopener">${name}</a></li>`;
+        return `<li><a href="${escapeHtml(video.url)}" target="_blank" rel="noopener">${escapeHtml(name)}</a></li>`;
       }).join("")}</ul>`;
     }
     async function loadSavedVideos() {
@@ -188,7 +325,7 @@
     }
     async function uploadImage(fileInputId, urlInputId, updatePreview) {
       const file = document.getElementById(fileInputId).files[0];
-      const apiToken = document.getElementById("apiToken").value.trim();
+      const apiToken = getApiToken();
       if (!apiToken) { setStatus("请先填写 AD_VIDEO_TOKEN，再上传图片。"); return; }
       if (!file) { setStatus("请先选择需要上传的图片。"); return; }
       if (![/^image\/png$/, /^image\/jpeg$/].some((rule) => rule.test(file.type))) {
@@ -196,7 +333,7 @@
         return;
       }
       if (file.size > 20 * 1024 * 1024) { setStatus("图片不能超过 20 MB。"); return; }
-      setStatus("正在上传图片……");
+      setStatus("正在上传图片...");
       try {
         const formData = new FormData();
         formData.append("file", file);
@@ -213,74 +350,114 @@
         setStatus("图片上传完成，已自动填入图片网址。");
       } catch (error) { handleError(error); }
     }
-    async function resumePendingTasks() {
-      if (polling || !pendingTasks().length) return;
-      const apiToken = document.getElementById("apiToken").value.trim();
-      if (!apiToken) {
+    async function pollOneTask(taskId) {
+      const apiToken = getApiToken();
+      if (!apiToken) return;
+      const response = await fetch(`/api/status/${encodeURIComponent(taskId)}`, { headers: { "X-Ad-Video-Token": apiToken } });
+      const data = await readJsonResponse(response);
+      if (!response.ok) {
+        setStatus(`查询任务 ${taskId} 失败：${data.error || "查询失败"}`);
+        return;
+      }
+      if (data.status === "succeeded") {
+        updateStoredTask(taskId, { status: "succeeded", videoUrl: data.video_url, completedAt: new Date().toISOString(), error: "" });
+        setStatus(`任务 ${taskId} 已完成，可以继续提交或打开结果。`);
+        loadSavedVideos();
+      } else if (["failed", "cancelled"].includes(data.status)) {
+        updateStoredTask(taskId, { status: data.status, completedAt: new Date().toISOString(), error: data.error || data.status });
+        setStatus(`任务 ${taskId} 未成功：${data.error || data.status}`);
+      } else {
+        updateStoredTask(taskId, { status: "pending" });
+      }
+    }
+    async function pollAllPendingTasks() {
+      if (pollingInFlight) return;
+      const tasks = pendingTasks();
+      if (!tasks.length) {
+        stopPollingPendingTasks();
+        return;
+      }
+      if (!getApiToken()) {
+        setStatus(`发现 ${tasks.length} 个未完成任务。填写 AD_VIDEO_TOKEN 后会继续查询。`);
+        return;
+      }
+      pollingInFlight = true;
+      try {
+        await Promise.allSettled(tasks.map((task) => pollOneTask(task.taskId)));
+      } finally {
+        pollingInFlight = false;
+        if (!pendingTasks().length) stopPollingPendingTasks();
+      }
+    }
+    function startPollingPendingTasks() {
+      if (!pendingTasks().length) {
+        stopPollingPendingTasks();
+        return;
+      }
+      if (!getApiToken()) {
         setStatus(`发现 ${pendingTasks().length} 个未完成任务。填写 AD_VIDEO_TOKEN 后会继续查询。`);
         return;
       }
-      activeToken = apiToken;
-      submit.disabled = true;
-      const taskId = pendingTasks()[0].taskId;
-      await pollStatus(taskId);
-      if (pendingTasks().some((task) => task.taskId === taskId)) {
-        polling = setInterval(() => pollStatus(taskId).catch(handleError), 5000);
+      if (!pollingTimer) {
+        pollingTimer = setInterval(() => pollAllPendingTasks().catch(handleError), 5000);
       }
     }
-    async function pollStatus(taskId) {
-      const response = await fetch(`/api/status/${encodeURIComponent(taskId)}`, { headers: { "X-Ad-Video-Token": activeToken } });
-      const data = await readJsonResponse(response);
-      if (!response.ok) throw new Error(data.error || "查询失败");
-      setStatus(`任务编号：${taskId}\n当前状态：${data.status}\n请等待视频生成完成……`);
-      if (data.status === "succeeded") {
-        clearInterval(polling);
-        submit.disabled = false;
-        setStatus(`任务编号：${taskId}\n当前状态：已完成\n请点击下方链接查看或保存视频。`);
-        updateStoredTask(taskId, { status: "succeeded", videoUrl: data.video_url, completedAt: new Date().toISOString() });
-        result.innerHTML = `<a href="${data.video_url}" target="_blank" rel="noopener">打开生成的视频</a>`;
-        loadSavedVideos();
-      } else if (["failed", "cancelled"].includes(data.status)) {
-        clearInterval(polling);
-        submit.disabled = false;
-        updateStoredTask(taskId, { status: data.status, completedAt: new Date().toISOString() });
-        setStatus(`任务编号：${taskId}\n生成未成功：${data.error || data.status}`);
+    function stopPollingPendingTasks() {
+      if (pollingTimer) {
+        clearInterval(pollingTimer);
+        pollingTimer = null;
       }
     }
     async function createVideo() {
-      clearInterval(polling);
       submit.disabled = true;
-      result.textContent = "";
       document.getElementById("preview").src = document.getElementById("image").value.trim();
-      setStatus("正在提交视频制作任务……");
+      setStatus("正在提交视频制作任务...");
       try {
-        const apiToken = document.getElementById("apiToken").value.trim();
+        const apiToken = getApiToken();
         if (!apiToken) throw new Error("请先填写 AD_VIDEO_TOKEN");
-        activeToken = apiToken;
+        const payload = buildPayload();
         const response = await fetch("/api/create", {
           method: "POST",
           headers: { "Content-Type": "application/json", "X-Ad-Video-Token": apiToken },
-          body: JSON.stringify(buildPayload()),
+          body: JSON.stringify(payload),
         });
         const data = await readJsonResponse(response);
         if (!response.ok) throw new Error(data.error || "任务创建失败");
-        rememberTask(data.ad_task_id);
-        setStatus(`任务编号：${data.ad_task_id}\n当前状态：已提交\n正在等待制作……`);
-        await pollStatus(data.ad_task_id);
-        if (pendingTasks().some((task) => task.taskId === data.ad_task_id)) {
-          polling = setInterval(() => pollStatus(data.ad_task_id).catch(handleError), 5000);
-        }
-      } catch (error) { handleError(error); }
+        rememberTask(data.ad_task_id, payload.title);
+        setStatus(`任务 ${data.ad_task_id} 已提交。可以继续创建下一个视频。`);
+        await pollOneTask(data.ad_task_id);
+        startPollingPendingTasks();
+      } catch (error) {
+        handleError(error);
+      } finally {
+        submit.disabled = false;
+      }
     }
     function handleError(error) {
-      clearInterval(polling);
-      submit.disabled = false;
       setStatus(`出现错误：${error.message}`);
     }
-    document.getElementById("reset").addEventListener("click", () => loadDefaults().then(() => setStatus("已恢复预置内容。")));
-    document.getElementById("apiToken").addEventListener("change", () => resumePendingTasks().catch(handleError));
+    document.getElementById("reset").addEventListener("click", () => loadDefaults().then(() => setStatus("已恢复预置内容。")).catch(handleError));
+    document.getElementById("clearToken").addEventListener("click", () => {
+      document.getElementById("apiToken").value = "";
+      writeStoredToken("");
+      stopPollingPendingTasks();
+      setStatus("已清除本地 Token。");
+    });
+    document.getElementById("apiToken").addEventListener("input", () => {
+      writeStoredToken(document.getElementById("apiToken").value.trim());
+      startPollingPendingTasks();
+    });
+    taskTableBody.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-remove-task]");
+      if (button) removeTask(button.dataset.removeTask);
+    });
     submit.addEventListener("click", createVideo);
-    loadDefaults().then(() => resumePendingTasks()).catch(handleError);
+    document.getElementById("apiToken").value = readStoredToken();
+    renderTasks();
+    loadDefaults().then(() => {
+      startPollingPendingTasks();
+      pollAllPendingTasks().catch(handleError);
+    }).catch(handleError);
     loadSavedVideos();
   </script>
 </body>

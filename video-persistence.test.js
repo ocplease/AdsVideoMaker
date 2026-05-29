@@ -39,3 +39,23 @@ test("project declares Vercel Blob and exposes saved video endpoints", () => {
   assert.match(html, /loadSavedVideos/);
   assert.match(html, /localStorage/);
 });
+
+test("page renders a multi-task dashboard with token persistence controls", () => {
+  const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+
+  assert.match(html, /id="taskTableBody"/);
+  assert.match(html, /id="clearToken"/);
+  assert.match(html, /adVideoMakerToken/);
+  assert.match(html, /startPollingPendingTasks/);
+  assert.match(html, /pollAllPendingTasks/);
+  assert.match(html, /removeTask/);
+});
+
+test("page allows new submissions while earlier tasks are still generating", () => {
+  const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+
+  assert.doesNotMatch(html, /let polling = null/);
+  assert.doesNotMatch(html, /let activeToken = ""/);
+  assert.doesNotMatch(html, /submit\.disabled = false;\s*setStatus\(`任务编号/);
+  assert.doesNotMatch(html, /clearInterval\(polling\)/);
+});
